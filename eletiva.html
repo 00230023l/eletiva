@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória Matemática</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #app {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            justify-content: center;
+            align-content: center;
+        }
+
+        .card {
+            width: 120px;
+            height: 120px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        /* Lado da frente e de trás da carta */
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .card-back {
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+            font-size: 2rem;
+            transform: rotateY(0deg);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        .card-face {
+            background-color: #e0f2f7;
+            color: #333;
+            transform: rotateY(180deg);
+        }
+
+        .card.matched .card-face {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .card.matched .card-back {
+            background: linear-gradient(to right, #c8e6c9, #a5d6a7);
+        }
+
+        #message-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* Transição suave */
+        }
+
+        #message-modal.active {
+            opacity: 1; /* Torna visível */
+            visibility: visible; /* Exibe o modal */
+        }
+
+        #message-content {
+            background-color: white; /* Fundo branco para o conteúdo do modal */
+            padding: 40px; /* Preenchimento interno */
+            border-radius: 15px; /* Cantos arredondados */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Sombra */
+            text-align: center; /* Centraliza o texto */
+            transform: scale(0.8); /* Começa um pouco menor */
+            transition: transform 0.3s ease-in-out; /* Transição suave */
+        }
+
+        #message-modal.active #message-content {
+            transform: scale(1); /* Volta ao tamanho normal quando ativo */
+        }
+
+        /* Responsividade para telas menores */
+        @media (max-width: 768px) {
+            #app {
+                padding: 20px;
+            }
+
+            #game-board {
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Ajusta colunas para telas menores */
+                gap: 10px; /* Reduz o espaço entre as cartas */
+            }
+
+            .card {
+                width: 90px; /* Ajusta largura da carta */
+                height: 90px; /* Ajusta altura da carta */
+                font-size: 1.2rem; /* Ajusta tamanho da fonte */
+            }
+
+            .card-back {
+                font-size: 1.8rem; /* Ajusta tamanho do ícone no verso */
+            }
+        }
+
+        @media (max-width: 480px) {
+            #app {
+                padding: 15px;
+            }
+            #game-board {
+                grid-template-columns: repeat(4, 1fr); /* 4 colunas fixas para telas muito pequenas */
+                gap: 8px;
+            }
+            .card {
+                width: 70px;
+                height: 70px;
+                font-size: 1rem;
+            }
+            .card-back {
+                font-size: 1.5rem;
+            }
+            h1 {
+                font-size: 1.8rem; /* Reduz o tamanho do título */
+            }
+            #score-container, #controls button {
+                font-size: 0.9rem; /* Reduz o tamanho da fonte para score e botões */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="flex flex-col items-center justify-center p-8 bg-white shadow-xl rounded-2xl">
+        <h1 class="text-4xl font-bold text-gray-800 mb-6">Jogo da Memória Matemática</h1>
+
+        <div id="score-container" class="flex justify-between w-full max-w-sm mb-6 text-xl font-semibold text-gray-700">
+            <div>Pares Encontrados: <span id="matches-found">0</span></div>
+            <div>Melhor Pontuação: <span id="high-score">0</span></div>
+        </div>
+
+        <div id="game-board" class="grid grid-cols-6 gap-4 w-full max-w-xl mb-8">
+            <!-- As cartas serão geradas aqui pelo JavaScript -->
+        </div>
+
+        <div id="controls" class="flex justify-center">
+            <button id="restart-button" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                Reiniciar Jogo
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Mensagem -->
+    <div id="message-modal">
+        <div id="message-content" class="bg-white p-10 rounded-xl shadow-2xl">
+            <h2 id="modal-title" class="text-3xl font-bold text-gray-800 mb-4"></h2>
+            <p id="modal-text" class="text-lg text-gray-700 mb-6"></p>
+            <button id="modal-close-button" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                Fechar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Seleciona os elementos do DOM para manipulação
+        const gameBoard = document.getElementById('game-board');
+        const matchesFoundSpan = document.getElementById('matches-found');
+        const restartButton = document.getElementById('restart-button');
+        const messageModal = document.getElementById('message-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseButton = document.getElementById('modal-close-button');
+        const highScoreSpan = document.getElementById('high-score');
+
+        // Variáveis de estado do jogo
+        let cards = []; // Armazena todas as cartas do jogo (equações e respostas)
+        let flippedCards = []; // Armazena as cartas atualmente viradas (máximo de 2)
+        let matchesFound = 0; // Contador de pares encontrados
+        let canFlip = true; // Controla se o jogador pode virar mais cartas
+        let totalPairs = 0; // Total de pares no jogo
+
+        // Lista de pares de equações e suas respostas.
+        // É importante que as respostas sejam únicas para evitar ambiguidade.
+        // Optamos por um número maior de pares para deixar o código "mais grande" e o jogo mais desafiador.
+        const equationPairs = [
+            { eq: '2 + 3', ans: '5' },
+            { eq: '10 - 4', ans: '6' },
+            { eq: '3 * 3', ans: '9' },
+            { eq: '12 / 2', ans: '6' }, // Oh, cuidado! O '6' é duplicado. Vou ajustar.
+            // Para garantir respostas únicas, vou usar um conjunto predefinido de respostas
+            // e criar equações para elas.
+        ];
+
+        // --- Gerando um conjunto maior de equações com respostas únicas ---
+        // Definindo um conjunto de respostas únicas para garantir a exclusividade dos pares
+        const uniqueAnswers = [
+            5, 7, 8, 10, 12, 14, 15, 16, 18, 20,
+            21, 24, 25, 28, 30, 32, 35, 36, 40, 42,
+            44, 45, 48, 49, 50, 54, 55, 56, 60, 63,
+            64, 66, 70, 72, 75, 77, 80, 81, 84, 88,
+            90, 96, 99, 100, 108, 110, 120, 132, 144, 150
+        ]; // 50 respostas únicas para flexibilidade
+
+        // Função para gerar uma equação que resulte em um valor específico
+        function generateEquation(target) {
+            let eqStr = '';
+            // Tenta gerar equações simples de adição, subtração, multiplicação ou divisão
+            // Prioriza operações básicas para manter a legibilidade
+            const operations = ['+', '-', '*', '/'];
+            let found = false;
+            let attempts = 0;
+            const maxAttempts = 100; // Limite de tentativas para evitar loops infinitos
+
+            while (!found && attempts < maxAttempts) {
+                attempts++;
+                const op = operations[Math.floor(Math.random() * operations.length)];
+                let num1, num2;
+
+                switch (op) {
+                    case '+':
+                        num1 = Math.floor(Math.random() * (target - 1)) + 1;
+                        num2 = target - num1;
+                        if (num2 > 0) {
+                            eqStr = `${num1} + ${num2}`;
+                            found = true;
+                        }
+                        break;
+                    case '-':
+                        num1 = Math.floor(Math.random() * (target * 2)) + target; // num1 > target
+                        num2 = num1 - target;
+                        if (num2 > 0) { // Garante que num2 seja positivo para subtração
+                             eqStr = `${num1} - ${num2}`;
+                             found = true;
+                        }
+                        break;
+                    case '*':
+                        // Encontra um divisor aleatório para o target
+                        let divisors = [];
+                        for (let i = 2; i <= Math.sqrt(target); i++) {
+                            if (target % i === 0) {
+                                divisors.push(i);
+                                if (target / i !== i) {
+                                    divisors.push(target / i);
+                                }
+                            }
+                        }
+                        if (divisors.length > 0) {
+                            num1 = divisors[Math.floor(Math.random() * divisors.length)];
+                            num2 = target / num1;
+                            eqStr = `${num1} * ${num2}`;
+                            found = true;
+                        } else if (target > 1) { // Se não tem divisores, tenta 1 * target
+                            eqStr = `1 * ${target}`;
+                            found = true;
+                        }
+                        break;
+                    case '/':
+                        num2 = Math.floor(Math.random() * 10) + 2; // Denominador entre 2 e 11
+                        num1 = target * num2;
+                        eqStr = `${num1} / ${num2}`;
+                        found = true;
+                        break;
+                }
+            }
+            // Se falhou em gerar uma equação complexa, retorna uma simples
+            if (!found) {
+                return `${target} + 0`;
+            }
+            return eqStr;
+        }
+
+        const numberOfPairs = 18;
+        let gameAnswers = [];
+        const shuffledUniqueAnswers = uniqueAnswers.sort(() => 0.5 - Math.random());
+        for (let i = 0; i < numberOfPairs; i++) {
+            gameAnswers.push(shuffledUniqueAnswers[i]);
+        }
+        totalPairs = numberOfPairs;
+
+        // Popula a array `equationPairs` com equações geradas e suas respostas. ai meu cuzinhooo
+        equationPairs.length = 0;
+        gameAnswers.forEach((ans, index) => {
+            const equation = generateEquation(ans);
+            equationPairs.push({ eq: equation, ans: String(ans) });
+        });
+        // --- Fim da geração de equações ---
+
+        function initializeGame() {
+            matchesFound = 0;
+            matchesFoundSpan.textContent = matchesFound;
+            flippedCards = [];
+            canFlip = true;
+            gameBoard.innerHTML = '';
+
+            cards = [];
+            equationPairs.forEach((pair, index) => {
+                cards.push({
+                    id: `card-${index}`,
+                    value: pair.eq,
+                    isFlipped: false,
+                    isMatched: false,
+                    type: 'equation'
+                });
+                cards.push({
+                    id: `card-${index}`,
+                    value: pair.ans,
+                    isFlipped: false,
+                    isMatched: false,
+                    type: 'answer'
+                });
+            });
+
+            shuffleCards();
+            createBoard();
+            loadHighScore();
+            displayMessage('Bem-vindo!', 'Combine as equações com suas respostas! Clique em "Reiniciar Jogo" para começar ou jogar novamente.');
+        }
+
+        function shuffleCards() {
+            for (let i = cards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cards[i], cards[j]] = [cards[j], cards[i]];
+            }
+        }
+
+        function createBoard() {
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card', 'rounded-lg', 'shadow-lg');
+                cardElement.dataset.id = card.id;
+                cardElement.dataset.value = card.value;
+                cardElement.dataset.type = card.type;
+
+                const cardInner = document.createElement('div');
+                cardInner.classList.add('card-inner');
+
+                const cardFace = document.createElement('div');
+                cardFace.classList.add('card-face');
+                cardFace.textContent = card.value;
+
+                const cardBack = document.createElement('div');
+                cardBack.classList.add('card-back');
+                cardBack.innerHTML = '<span class="text-3xl font-bold">?</span>';
+
+                cardInner.appendChild(cardFace);
+                cardInner.appendChild(cardBack);
+                cardElement.appendChild(cardInner);
+
+                cardElement.addEventListener('click', flipCard);
+                gameBoard.appendChild(cardElement);
+            });
+        }
+
+        function flipCard(event) {
+            const clickedCardElement = event.currentTarget;
+            const clickedCardData = cards.find(c => c.id === clickedCardElement.dataset.id && c.value === clickedCardElement.dataset.value);
+
+            if (!canFlip || clickedCardData.isFlipped || clickedCardData.isMatched) {
+                return;
+            }
+
+            clickedCardData.isFlipped = true;
+            clickedCardElement.classList.add('flipped');
+
+            flippedCards.push(clickedCardElement);
+
+            if (flippedCards.length === 2) {
+                canFlip = false;
+                setTimeout(checkForMatch, 1000);
+            }
+        }
+
+        function checkForMatch() {
+            const [card1Element, card2Element] = flippedCards;
+            const card1Value = card1Element.dataset.value;
+            const card2Value = card2Element.dataset.value;
+            const card1Type = card1Element.dataset.type;
+            const card2Type = card2Element.dataset.type;
+
+            let isMatch = false;
+
+            if (card1Element.dataset.id === card2Element.dataset.id && card1Type !== card2Type) {
+                isMatch = true;
+            }
+
+            if (isMatch) {
+                card1Element.classList.add('matched');
+                card2Element.classList.add('matched');
+                
+                cards.find(c => c.id === card1Element.dataset.id && c.value === card1Value).isMatched = true;
+                cards.find(c => c.id === card2Element.dataset.id && c.value === card2Value).isMatched = true;
+
+                matchesFound++;
+                matchesFoundSpan.textContent = matchesFound;
+
+                if (matchesFound === totalPairs) {
+                    setTimeout(() => {
+                        displayMessage('Parabéns!', `Você encontrou todos os ${totalPairs} pares!`);
+                        updateHighScore();
+                    }, 500);
+                }
+            } else {
+                setTimeout(() => {
+                    card1Element.classList.remove('flipped');
+                    card2Element.classList.remove('flipped');
+                    
+                    cards.find(c => c.id === card1Element.dataset.id && c.value === card1Value).isFlipped = false;
+                    cards.find(c => c.id === card2Element.dataset.id && c.value === card2Value).isFlipped = false;
+                }, 1000);
+            }
+
+            flippedCards = [];
+            canFlip = true;
+        }
+
+        function displayMessage(title, text) {
+            modalTitle.textContent = title;
+            modalText.textContent = text;
+            messageModal.classList.add('active');
+        }
+
+        
+        function closeMessageModal() {
+            messageModal.classList.remove('active');
+        }
+        
+        function loadHighScore() {
+            const storedHighScore = localStorage.getItem('mathMemoryHighScore');
+            if (storedHighScore) {
+                highScoreSpan.textContent = storedHighScore;
+            } else {
+                highScoreSpan.textContent = 0;
+            }
+        }
+        
+        function updateHighScore() {
+            const currentHighScore = parseInt(highScoreSpan.textContent);
+            if (matchesFound === totalPairs && matchesFound > currentHighScore) {
+                localStorage.setItem('mathMemoryHighScore', matchesFound);
+                highScoreSpan.textContent = matchesFound;
+                displayMessage('Novo Recorde!', `Você bateu seu recorde com ${matchesFound} pares!`);
+            }
+        }
+        
+        restartButton.addEventListener('click', () => {
+            initializeGame();
+            closeMessageModal();
+        });
+        
+        modalCloseButton.addEventListener('click', closeMessageModal);
+        
+        document.addEventListener('DOMContentLoaded', initializeGame);
+    </script>
+</body>
+</html>
